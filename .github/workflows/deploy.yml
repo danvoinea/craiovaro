@@ -43,7 +43,7 @@ jobs:
             set -e
             cd ${{ secrets.PROD_PATH }}
 
-            PHP_BIN=php8.3
+            PHP_BIN=php8.4
             COMPOSER_BIN=/usr/bin/composer
 
             echo "[deploy] installing prod PHP deps..."
