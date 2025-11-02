@@ -27,4 +27,3 @@ class SystemStatusTest extends TestCase
             ]);
     }
 }
-

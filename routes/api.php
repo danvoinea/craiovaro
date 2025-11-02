@@ -1,5 +1,7 @@
-use Illuminate\Support\Facades\Route;
+<?php
+
 use App\Actions\GetSystemStatus;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/status', function (GetSystemStatus $action) {
     return response()->json([
@@ -7,4 +9,3 @@ Route::get('/status', function (GetSystemStatus $action) {
         'data' => $action->execute(),
     ]);
 });
-
