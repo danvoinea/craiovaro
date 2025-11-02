@@ -1,11 +1,7 @@
 <?php
 
-use App\Actions\GetSystemStatus;
+use App\Http\Controllers\StatusController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/status', function (GetSystemStatus $action) {
-    return response()->json([
-        'ok' => true,
-        'data' => $action->execute(),
-    ]);
-});
+Route::get('/status', [StatusController::class, 'show'])
+    ->name('status.show');
