@@ -1,0 +1,63 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up SSH so we can connect as web52
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+
+      # Sync the repo to the server
+      #
+      # We rsync instead of `git pull` so we don't rely on git on the server,
+      # and we don't touch .env or storage logs/uploads.
+      - name: Upload code to server
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude 'vendor' \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'storage/logs/*' \
+            --exclude 'storage/framework/cache/*' \
+            ./ ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_PATH }}/
+
+      # Run install/build/migrate/cache ON the server
+      - name: Run deploy steps on server
+        run: |
+          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+            set -e
+            cd ${{ secrets.PROD_PATH }}
+
+            echo "[deploy] installing prod PHP deps..."
+            composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+            echo "[deploy] running migrations..."
+            php artisan migrate --force
+
+            echo "[deploy] optimizing laravel caches..."
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "[deploy] fixing permissions for storage and cache..."
+            chown -R web52:client3 storage bootstrap/cache
+            chmod -R ug+rw storage bootstrap/cache
+
+            echo "[deploy] done."
+          EOF
+

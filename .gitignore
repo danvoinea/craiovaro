@@ -4,6 +4,7 @@
 .env.*.local
 .env.backup
 .env.local
+.env.testing
 .env.production
 .idea
 .php-cs-fixer.cache
