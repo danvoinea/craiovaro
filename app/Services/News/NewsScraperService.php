@@ -695,6 +695,10 @@ class NewsScraperService
 
     protected function shouldFilterByKeywords(NewsSource $source, string $title, string $bodyText): bool
     {
+        if ($source->scope === 'local') {
+            return false;
+        }
+
         $keywords = $source->keywordsList();
 
         if ($keywords === []) {

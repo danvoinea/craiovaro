@@ -48,6 +48,7 @@ class HomeController extends Controller
                     'id' => $article->id,
                     'title' => $article->title,
                     'source' => $article->source_name ?? $article->source?->name,
+                    'scope' => $article->source?->scope ?? 'local',
                     'short_url' => route('short-links.redirect', $shortLink->code),
                     'source_url' => $article->source_url,
                     'published_time' => $localized?->format('H:i'),
@@ -121,6 +122,7 @@ class HomeController extends Controller
                 return [
                     'title' => $lead->title,
                     'source' => $lead->source_name ?? $lead->source?->name,
+                    'scope' => $lead->source?->scope ?? 'local',
                     'short_url' => route('short-links.redirect', $this->shortLinks->getOrCreateForArticle($lead)->code),
                     'published_time' => $localized?->format('d/m H:i'),
                     'similar_count' => max(0, $items->count() - 1),

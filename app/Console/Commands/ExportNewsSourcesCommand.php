@@ -49,6 +49,7 @@ class ExportNewsSourcesCommand extends Command
                 'fetch_frequency',
                 'keywords',
                 'is_active',
+                'scope',
             ]);
         })->values();
 

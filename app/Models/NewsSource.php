@@ -31,6 +31,7 @@ class NewsSource extends Model
         'is_active',
         'last_fetched_at',
         'last_fetch_status',
+        'scope',
     ];
 
     /**

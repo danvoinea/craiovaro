@@ -70,6 +70,7 @@ class CreateNewsSourceCommand extends Command
         $imageSelector = $this->askOptional('Image selector (optional)');
 
         $frequency = $this->askRequired('Fetch frequency (cron, daily, hourly, 15m, etc.)');
+        $scope = $this->choice('Scope', ['local', 'national'], default: 'local');
         $keywordsRaw = $this->askOptional('Keywords (comma separated, optional)');
 
         $isActive = $this->confirm('Activate this source?', true);
@@ -87,6 +88,7 @@ class CreateNewsSourceCommand extends Command
             'fetch_frequency' => $frequency,
             'keywords' => $keywordsRaw ? $this->normaliseKeywords($keywordsRaw) : null,
             'is_active' => $isActive,
+            'scope' => $scope,
         ]);
     }
 

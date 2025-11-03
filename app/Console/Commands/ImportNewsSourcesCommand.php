@@ -104,6 +104,7 @@ class ImportNewsSourcesCommand extends Command
             'fetch_frequency',
             'keywords',
             'is_active',
+            'scope',
         ]);
 
         if (isset($attributes['selector_type']) && $attributes['selector_type'] === '') {
@@ -120,6 +121,10 @@ class ImportNewsSourcesCommand extends Command
 
         if (isset($attributes['is_active'])) {
             $attributes['is_active'] = (bool) $attributes['is_active'];
+        }
+
+        if (! isset($attributes['scope']) || ! in_array($attributes['scope'], ['local', 'national'], true)) {
+            $attributes['scope'] = 'local';
         }
 
         return $attributes;

@@ -107,6 +107,7 @@ class ListNewsSourcesCommand extends Command
                 'Name' => $source->name,
                 'Status' => $source->is_active ? 'active' : 'inactive',
                 'Type' => $source->source_type,
+                'Scope' => $source->scope ?? 'local',
                 'Frequency' => $source->fetch_frequency,
                 'Last fetched' => $lastFetched ? $lastFetched->format('Y-m-d H:i') : '—',
                 'Last status' => $source->last_fetch_status ?? 'unknown',
@@ -121,6 +122,7 @@ class ListNewsSourcesCommand extends Command
             'Name',
             'Status',
             'Type',
+            'Scope',
             'Frequency',
             'Last fetched',
             'Last status',
@@ -138,6 +140,7 @@ class ListNewsSourcesCommand extends Command
 
             $this->line(sprintf('  Base URL: %s', $source->base_url));
             $this->line(sprintf('  Selector type: %s', $source->selector_type ?? 'default (css)'));
+            $this->line(sprintf('  Scope: %s', $source->scope ?? 'local'));
             $this->line(sprintf('  Link selector: %s', $source->link_selector ?? '—'));
             $this->line(sprintf('  Title selector: %s', $source->title_selector ?? '—'));
             $this->line(sprintf('  Body selector: %s', $source->body_selector ?? '—'));
