@@ -9,6 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('news:fetch-sources')
-    ->everyFifteenMinutes()
+    ->everyTenMinutes()
     ->runInBackground()
     ->description('Poll configured news sources for fresh articles');

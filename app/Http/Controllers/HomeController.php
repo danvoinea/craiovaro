@@ -6,6 +6,7 @@ use App\Models\NewsRaw;
 use App\Services\Links\ShortLinkService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -17,51 +18,55 @@ class HomeController extends Controller
 
     public function show(): View
     {
-        $articles = NewsRaw::query()
-            ->with(['source:id,name', 'shortLink'])
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
-            ->limit(120)
-            ->get();
+        $payload = Cache::remember('home:payload', now()->addSeconds(60), function () {
+            $articles = NewsRaw::query()
+                ->with(['source:id,name', 'shortLink'])
+                ->orderByDesc('published_at')
+                ->orderByDesc('created_at')
+                ->limit(120)
+                ->get();
 
-        $today = Carbon::now('Europe/Bucharest')->startOfDay();
+            $today = Carbon::now('Europe/Bucharest')->startOfDay();
 
-        $currentNews = $articles->map(function (NewsRaw $article) use ($today): array {
-            $timestamp = $article->published_at ?? $article->created_at;
-            $localized = $timestamp?->copy()->setTimezone('Europe/Bucharest');
-            $meta = $article->meta ?? [];
-            $summaryRaw = $article->body_text ?? ($meta['summary'] ?? null);
-            $summary = is_string($summaryRaw)
-                ? Str::limit(trim(strip_tags($summaryRaw)), 400)
-                : null;
-            $publishedDate = null;
+            $currentNews = $articles->map(function (NewsRaw $article) use ($today): array {
+                $timestamp = $article->published_at ?? $article->created_at;
+                $localized = $timestamp?->copy()->setTimezone('Europe/Bucharest');
+                $meta = $article->meta ?? [];
+                $summaryRaw = $article->body_text ?? ($meta['summary'] ?? null);
+                $summary = is_string($summaryRaw)
+                    ? Str::limit(trim(strip_tags($summaryRaw)), 400)
+                    : null;
+                $publishedDate = null;
 
-            if ($localized !== null && ! $localized->isSameDay($today)) {
-                $publishedDate = mb_strtolower($localized->locale('ro')->isoFormat('MMM D'));
-            }
+                if ($localized !== null && ! $localized->isSameDay($today)) {
+                    $publishedDate = mb_strtolower($localized->locale('ro')->isoFormat('MMM D'));
+                }
 
-            $shortLink = $this->shortLinks->getOrCreateForArticle($article);
+                $shortLink = $this->shortLinks->getOrCreateForArticle($article);
+
+                return [
+                    'id' => $article->id,
+                    'title' => $article->title,
+                    'source' => $article->source_name ?? $article->source?->name,
+                    'short_url' => route('short-links.redirect', $shortLink->code),
+                    'source_url' => $article->source_url,
+                    'published_time' => $localized?->format('H:i'),
+                    'published_label' => $localized?->diffForHumans(now('Europe/Bucharest'), parts: 2, short: true) ?? 'recent',
+                    'published_date' => $publishedDate,
+                    'summary' => $summary,
+                ];
+            });
+
+            $topics = $this->buildTopics($articles);
 
             return [
-                'id' => $article->id,
-                'title' => $article->title,
-                'source' => $article->source_name ?? $article->source?->name,
-                'short_url' => route('short-links.redirect', $shortLink->code),
-                'source_url' => $article->source_url,
-                'published_time' => $localized?->format('H:i'),
-                'published_label' => $localized?->diffForHumans(now('Europe/Bucharest'), parts: 2, short: true) ?? 'recent',
-                'published_date' => $publishedDate,
-                'summary' => $summary,
+                'currentNews' => $currentNews,
+                'topics' => $topics,
+                'refreshedAt' => Carbon::now('Europe/Bucharest'),
             ];
         });
 
-        $topics = $this->buildTopics($articles);
-
-        return view('home', [
-            'currentNews' => $currentNews,
-            'topics' => $topics,
-            'refreshedAt' => Carbon::now('Europe/Bucharest'),
-        ]);
+        return view('home', $payload);
     }
 
     /**
