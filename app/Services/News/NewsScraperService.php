@@ -5,6 +5,7 @@ namespace App\Services\News;
 use App\Models\NewsRaw;
 use App\Models\NewsSource;
 use App\Models\NewsSourceLog;
+use DateTimeInterface;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -31,6 +32,7 @@ class NewsScraperService
         $summary = [
             'processed' => 0,
             'created' => 0,
+            'updated' => 0,
             'duplicates' => 0,
             'filtered' => 0,
             'errors' => 0,
@@ -45,6 +47,7 @@ class NewsScraperService
 
                 match ($result) {
                     'created' => $summary['created']++,
+                    'updated' => $summary['updated']++,
                     'duplicate' => $summary['duplicates']++,
                     'filtered' => $summary['filtered']++,
                     'error' => $summary['errors']++,
@@ -53,9 +56,10 @@ class NewsScraperService
             }
 
             $message = sprintf(
-                'Processed %d items: %d new, %d duplicates, %d filtered, %d errors.',
+                'Processed %d items: %d new, %d updated, %d duplicates, %d filtered, %d errors.',
                 $summary['processed'],
                 $summary['created'],
+                $summary['updated'],
                 $summary['duplicates'],
                 $summary['filtered'],
                 $summary['errors']
@@ -285,9 +289,7 @@ class NewsScraperService
 
         $hash = hash('sha256', $url);
 
-        if (NewsRaw::query()->where('url_hash', $hash)->exists()) {
-            return 'duplicate';
-        }
+        $existing = NewsRaw::query()->where('url_hash', $hash)->first();
 
         try {
             $payload = $this->buildArticlePayload($source, $item);
@@ -299,6 +301,34 @@ class NewsScraperService
 
         if ($payload === null) {
             return 'filtered';
+        }
+
+        if ($existing !== null) {
+            $updates = [];
+
+            if ($existing->published_at === null && $payload['published_at'] !== null) {
+                $updates['published_at'] = $payload['published_at'];
+            }
+
+            if ($existing->body_html === null && $payload['body_html'] !== null) {
+                $updates['body_html'] = $payload['body_html'];
+            }
+
+            if ($existing->body_text === null && $payload['body_text'] !== null) {
+                $updates['body_text'] = $payload['body_text'];
+            }
+
+            if ($existing->cover_image_url === null && $payload['cover_image_url'] !== null) {
+                $updates['cover_image_url'] = $payload['cover_image_url'];
+            }
+
+            if ($updates !== []) {
+                $existing->forceFill($updates)->save();
+
+                return 'updated';
+            }
+
+            return 'duplicate';
         }
 
         $payload['url_hash'] = $hash;
@@ -324,6 +354,9 @@ class NewsScraperService
 
         $needsPageFetch = $this->shouldFetchPage($source, $summary);
         $articleHtml = null;
+        $parsed = null;
+        $bodyHtml = null;
+        $bodyText = null;
 
         if ($needsPageFetch) {
             $articleHtml = $this->downloadContent($item['url']);
@@ -339,10 +372,18 @@ class NewsScraperService
             $bodyText = $summary ? $this->toPlainText($summary) : null;
         }
 
-        if (! isset($bodyHtml) && $articleHtml !== null) {
-            $parsed = $this->parseArticleDocument($source, $articleHtml, $item['url']);
-            $bodyHtml = $parsed['body_html'] ?? null;
-            $bodyText = $parsed['body_text'] ?? null;
+        if ($publishedAt === null && $articleHtml === null) {
+            try {
+                $articleHtml = $this->downloadContent($item['url']);
+            } catch (Throwable) {
+                $articleHtml = null;
+            }
+        }
+
+        if ($articleHtml !== null && ($bodyHtml === null || $bodyText === null || $coverImage === null || $title === null || $publishedAt === null)) {
+            $parsed ??= $this->parseArticleDocument($source, $articleHtml, $item['url']);
+            $bodyHtml ??= $parsed['body_html'] ?? null;
+            $bodyText ??= $parsed['body_text'] ?? null;
             $coverImage ??= $parsed['cover_image_url'] ?? null;
             $title ??= $parsed['title'] ?? null;
             $publishedAt ??= $parsed['published_at'] ?? null;
@@ -413,6 +454,10 @@ class NewsScraperService
 
         $dateRaw = $this->extractNodeValueFromDocument($document, $source->date_selector, $selectorType, 'text');
         $publishedAt = $this->parseDate($dateRaw);
+
+        if ($publishedAt === null) {
+            $publishedAt = $this->extractPublishedAtFromDocument($document);
+        }
 
         return [
             'title' => $title,
@@ -487,15 +532,128 @@ class NewsScraperService
             return $value;
         }
 
+        if ($value instanceof DateTimeInterface) {
+            return Carbon::instance($value);
+        }
+
+        if (is_object($value) && method_exists($value, '__toString')) {
+            $value = (string) $value;
+        }
+
         if (is_numeric($value)) {
             return Carbon::createFromTimestamp((int) $value);
         }
 
         if (is_string($value) && trim($value) !== '') {
             try {
-                return Carbon::parse($value);
+                $normalized = $this->normalizeDateString($value);
+
+                return Carbon::parse($normalized, 'Europe/Bucharest');
             } catch (Throwable) {
-                return null;
+                $formats = [
+                    'd.m.Y H:i',
+                    'd.m.Y H:i:s',
+                    'd.m.Y',
+                    'd/m/Y H:i',
+                    'd/m/Y H:i:s',
+                    'd/m/Y',
+                    'Y-m-d H:i',
+                    'Y-m-d H:i:s',
+                ];
+
+                foreach ($formats as $format) {
+                    try {
+                        return Carbon::createFromFormat($format, $this->normalizeDateString($value), 'Europe/Bucharest');
+                    } catch (Throwable) {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function normalizeDateString(string $value): string
+    {
+        $normalized = trim($value);
+
+        $replacements = [
+            'ianuarie' => 'january',
+            'februarie' => 'february',
+            'martie' => 'march',
+            'aprilie' => 'april',
+            'mai' => 'may',
+            'iunie' => 'june',
+            'iulie' => 'july',
+            'august' => 'august',
+            'septembrie' => 'september',
+            'octombrie' => 'october',
+            'noiembrie' => 'november',
+            'decembrie' => 'december',
+        ];
+
+        $asciiNormalized = Str::ascii($normalized);
+
+        foreach ($replacements as $romanian => $english) {
+            $asciiNormalized = preg_replace('/\b'.preg_quote($romanian, '/').'\b/ui', $english, $asciiNormalized);
+        }
+
+        $asciiNormalized = preg_replace('/\bora\b/ui', '', $asciiNormalized ?? '');
+        $asciiNormalized = preg_replace('/\s+/u', ' ', $asciiNormalized ?? '');
+
+        return trim($asciiNormalized ?? $normalized);
+    }
+
+    protected function extractPublishedAtFromDocument(DOMDocument $document): ?Carbon
+    {
+        $xpath = new DOMXPath($document);
+
+        $metaSelectors = [
+            '//meta[@property="article:published_time"]/@content',
+            '//meta[@property="og:published_time"]/@content',
+            '//meta[@name="article:published_time"]/@content',
+            '//meta[@name="pubdate"]/@content',
+            '//meta[@itemprop="datePublished"]/@content',
+        ];
+
+        foreach ($metaSelectors as $selector) {
+            $node = $xpath->query($selector)?->item(0);
+
+            if ($node !== null) {
+                $value = trim($node->nodeValue ?? '');
+
+                if ($value === '') {
+                    continue;
+                }
+
+                $parsed = $this->parseDate($value);
+
+                if ($parsed !== null) {
+                    return $parsed;
+                }
+            }
+        }
+
+        $timeNodes = $xpath->query('//time[@datetime]');
+
+        if ($timeNodes !== false) {
+            foreach ($timeNodes as $timeNode) {
+                if (! $timeNode instanceof DOMElement) {
+                    continue;
+                }
+
+                $value = trim($timeNode->getAttribute('datetime'));
+
+                if ($value === '') {
+                    continue;
+                }
+
+                $parsed = $this->parseDate($value);
+
+                if ($parsed !== null) {
+                    return $parsed;
+                }
             }
         }
 

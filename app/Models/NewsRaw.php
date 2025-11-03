@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class NewsRaw extends Model
 {
@@ -40,5 +41,10 @@ class NewsRaw extends Model
     public function source(): BelongsTo
     {
         return $this->belongsTo(NewsSource::class, 'news_source_id');
+    }
+
+    public function shortLink(): HasOne
+    {
+        return $this->hasOne(ShortLink::class);
     }
 }

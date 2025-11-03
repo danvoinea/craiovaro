@@ -61,6 +61,7 @@ class FetchNewsSourcesCommand extends Command
         $totals = [
             'processed' => 0,
             'created' => 0,
+            'updated' => 0,
             'duplicates' => 0,
             'filtered' => 0,
             'errors' => 0,
@@ -90,6 +91,7 @@ class FetchNewsSourcesCommand extends Command
 
             $totals['processed'] += $result['summary']['processed'] ?? 0;
             $totals['created'] += $result['summary']['created'] ?? 0;
+            $totals['updated'] += $result['summary']['updated'] ?? 0;
             $totals['duplicates'] += $result['summary']['duplicates'] ?? 0;
             $totals['filtered'] += $result['summary']['filtered'] ?? 0;
             $totals['errors'] += $result['summary']['errors'] ?? 0;
@@ -103,9 +105,10 @@ class FetchNewsSourcesCommand extends Command
 
         $this->newLine();
         $this->comment(sprintf(
-            'Totals — processed: %d, new: %d, duplicates: %d, filtered: %d, errors: %d, skipped: %d',
+            'Totals — processed: %d, new: %d, updated: %d, duplicates: %d, filtered: %d, errors: %d, skipped: %d',
             $totals['processed'],
             $totals['created'],
+            $totals['updated'],
             $totals['duplicates'],
             $totals['filtered'],
             $totals['errors'],
