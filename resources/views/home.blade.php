@@ -349,7 +349,6 @@
                                         @endif
                                     </span>
                                     <div class="news-source">
-                                        <span># {{ $item['scope'] }}</span>
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
                                     </div>
                                 </span>
@@ -385,7 +384,6 @@
                                     {{ $topic['title'] }}
                                 @endif
                                 <div class="topic-meta">
-                                    <span># {{ $topic['scope'] ?? 'local' }}</span>
                                     <span>{{ $topic['source'] }}</span>
                                     @if ($topic['published_time'])
                                         <span>{{ $topic['published_time'] }}</span>
