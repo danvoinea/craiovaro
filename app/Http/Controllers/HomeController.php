@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\NewsRaw;
+use App\Models\NewsSource;
 use App\Services\Links\ShortLinkService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -19,12 +20,26 @@ class HomeController extends Controller
     public function show(): View
     {
         $payload = Cache::remember('home:payload', now()->addSeconds(60), function () {
+            $threshold = Carbon::now()->subDays(7);
+
             $articles = NewsRaw::query()
                 ->with(['source:id,name', 'shortLink'])
+                ->where(function ($query) use ($threshold): void {
+                    $query->where('published_at', '>=', $threshold)
+                        ->orWhere(function ($inner) use ($threshold): void {
+                            $inner->whereNull('published_at')
+                                ->where('created_at', '>=', $threshold);
+                        });
+                })
                 ->orderByDesc('published_at')
                 ->orderByDesc('created_at')
                 ->limit(120)
                 ->get();
+
+            $sourcesList = NewsSource::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['name', 'base_url']);
 
             $today = Carbon::now('Europe/Bucharest')->startOfDay();
 
@@ -49,6 +64,7 @@ class HomeController extends Controller
                     'title' => $article->title,
                     'source' => $article->source_name ?? $article->source?->name,
                     'scope' => $article->source?->scope ?? 'local',
+                    'category' => $article->meta['category'] ?? null,
                     'short_url' => route('short-links.redirect', $shortLink->code),
                     'source_url' => $article->source_url,
                     'published_time' => $localized?->format('H:i'),
@@ -63,6 +79,10 @@ class HomeController extends Controller
             return [
                 'currentNews' => $currentNews,
                 'topics' => $topics,
+                'sourcesList' => $sourcesList->map(fn (NewsSource $source): array => [
+                    'name' => $source->name,
+                    'url' => $source->base_url,
+                ]),
                 'refreshedAt' => Carbon::now('Europe/Bucharest'),
             ];
         });
@@ -123,6 +143,7 @@ class HomeController extends Controller
                     'title' => $lead->title,
                     'source' => $lead->source_name ?? $lead->source?->name,
                     'scope' => $lead->source?->scope ?? 'local',
+                    'category' => $lead->meta['category'] ?? null,
                     'short_url' => route('short-links.redirect', $this->shortLinks->getOrCreateForArticle($lead)->code),
                     'published_time' => $localized?->format('d/m H:i'),
                     'similar_count' => max(0, $items->count() - 1),

@@ -52,6 +52,15 @@
             font-weight: 700;
         }
 
+        .hero-link {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .hero-link:hover {
+            text-decoration: underline;
+        }
+
         .hero p {
             margin: 0;
             color: var(--text-muted);
@@ -189,6 +198,14 @@
             font-weight: 600;
         }
 
+        .news-category {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
         .news-meta {
             margin-top: 12px;
             display: flex;
@@ -233,6 +250,37 @@
             margin: 0;
             font-size: 20px;
             font-weight: 700;
+        }
+
+        .topics-links {
+            margin-top: 16px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+        }
+
+        .topics-links h3 {
+            margin: 0 0 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .topics-links ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .topics-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .topics-links a:hover {
+            text-decoration: underline;
         }
 
         .topics-list {
@@ -316,7 +364,7 @@
 <body>
     <div class="page">
         <header class="hero">
-            <h1>craiova.ro</h1>
+            <h1><a href="/" class="hero-link">craiova.ro</a></h1>
             <p>Actualizăm automat știrile locale din Craiova și Dolj. Ultima actualizare: {{ $refreshedAt->diffForHumans() }}.</p>
         </header>
 
@@ -325,7 +373,6 @@
                 <div class="panel-header">
                     <div class="tabs">
                         <span class="tab is-active">Știri curente</span>
-                        <span class="tab">Subiectele zilei</span>
                     </div>
                     <small>Flux live · {{ $refreshedAt->timezone('Europe/Bucharest')->format('d.m H:i') }}</small>
                 </div>
@@ -350,6 +397,9 @@
                                     </span>
                                     <div class="news-source">
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
+                                        @if ($item['category'])
+                                            <span class="news-category">{{ $item['category'] }}</span>
+                                        @endif
                                     </div>
                                 </span>
                             </summary>
@@ -385,6 +435,9 @@
                                 @endif
                                 <div class="topic-meta">
                                     <span>{{ $topic['source'] }}</span>
+                                    @if ($topic['category'])
+                                        <span class="news-category">{{ $topic['category'] }}</span>
+                                    @endif
                                     @if ($topic['published_time'])
                                         <span>{{ $topic['published_time'] }}</span>
                                     @endif
@@ -398,6 +451,14 @@
                         <li>Încă nu am grupele de subiecte pentru astăzi.</li>
                     @endforelse
                 </ol>
+                <div class="topics-links">
+                    <h3>Surse indexate</h3>
+                    <ul>
+                        @foreach ($sourcesList as $source)
+                            <li><a href="{{ $source['url'] }}" target="_blank" rel="noopener">{{ $source['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
             </aside>
         </div>
     </div>

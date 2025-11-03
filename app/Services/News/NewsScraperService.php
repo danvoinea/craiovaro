@@ -138,6 +138,7 @@ class NewsScraperService
                 'summary' => $this->extractRssSummary($item),
                 'published_at' => $this->parseDate($item->pubDate ?? null),
                 'cover_image_url' => $this->extractRssCoverImage($item, $url),
+                'category' => $this->extractRssCategory($item),
             ];
 
             if (count($results) >= 50) {
@@ -350,6 +351,7 @@ class NewsScraperService
         $title = $item['title'] ?? null;
         $coverImage = $item['cover_image_url'] ?? null;
         $summary = $item['summary'] ?? null;
+        $category = $item['category'] ?? null;
         $publishedAt = $item['published_at'] instanceof Carbon ? $item['published_at'] : null;
 
         $needsPageFetch = $this->shouldFetchPage($source, $summary);
@@ -357,6 +359,7 @@ class NewsScraperService
         $parsed = null;
         $bodyHtml = null;
         $bodyText = null;
+        $detectedCategory = $item['category'] ?? null;
 
         if ($needsPageFetch) {
             $articleHtml = $this->downloadContent($item['url']);
@@ -367,6 +370,7 @@ class NewsScraperService
             $bodyHtml = $parsed['body_html'] ?? null;
             $bodyText = $parsed['body_text'] ?? null;
             $publishedAt ??= $parsed['published_at'] ?? null;
+            $detectedCategory ??= $parsed['category'] ?? null;
         } else {
             $bodyHtml = $summary;
             $bodyText = $summary ? $this->toPlainText($summary) : null;
@@ -387,6 +391,7 @@ class NewsScraperService
             $coverImage ??= $parsed['cover_image_url'] ?? null;
             $title ??= $parsed['title'] ?? null;
             $publishedAt ??= $parsed['published_at'] ?? null;
+            $detectedCategory ??= $parsed['category'] ?? null;
         }
 
         $title ??= 'Untitled article';
@@ -414,9 +419,10 @@ class NewsScraperService
             'published_at' => $publishedAt,
             'source_url' => $item['url'],
             'cover_image_url' => $coverImage,
-            'meta' => [
+            'meta' => array_filter([
                 'summary' => $summary,
-            ],
+                'category' => $detectedCategory,
+            ], fn ($value) => $value !== null),
         ];
     }
 
@@ -498,6 +504,21 @@ class NewsScraperService
 
         if (isset($item->description)) {
             return (string) $item->description;
+        }
+
+        return null;
+    }
+
+    protected function extractRssCategory(mixed $item): ?string
+    {
+        if (isset($item->category)) {
+            foreach ($item->category as $category) {
+                $value = trim((string) $category);
+
+                if ($value !== '') {
+                    return $value;
+                }
+            }
         }
 
         return null;
