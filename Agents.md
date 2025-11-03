@@ -1,5 +1,7 @@
 @laravel-php-ai-guidelines.md
 @Contributing.md
+@Workplan.md
+@Workplan.Module1.md
 
 ===
 
