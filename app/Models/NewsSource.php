@@ -9,6 +9,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $base_url
+ * @property string|null $homepage_url
+ * @property string $fetch_frequency
+ * @property bool $is_active
+ * @property string|null $last_fetch_status
+ * @property Carbon|null $last_fetched_at
+ * @property-read Carbon|null $created_at
+ * @property-read Carbon|null $updated_at
+ * @property-read \Illuminate\Support\Collection<int, NewsSourceLog> $logs
+ */
 class NewsSource extends Model
 {
     /** @use HasFactory<\Database\Factories\NewsSourceFactory> */
@@ -19,6 +32,7 @@ class NewsSource extends Model
     protected $fillable = [
         'name',
         'base_url',
+        'homepage_url',
         'source_type',
         'selector_type',
         'title_selector',

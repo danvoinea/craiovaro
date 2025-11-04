@@ -117,7 +117,7 @@ class NewsScraperService
             throw new RuntimeException('Unable to parse RSS response.');
         }
 
-        $items = $xml->channel?->item ?? $xml->item;
+        $items = isset($xml->channel) ? $xml->channel->item : $xml->item;
 
         if (! $items) {
             return [];
@@ -249,10 +249,6 @@ class NewsScraperService
         $results = [];
 
         foreach ($links as $node) {
-            if (! $node instanceof DOMElement) {
-                continue;
-            }
-
             $href = $node->getAttribute('href');
 
             $url = $this->resolveUrl($href, $source->base_url);
@@ -384,7 +380,7 @@ class NewsScraperService
             }
         }
 
-        if ($articleHtml !== null && ($bodyHtml === null || $bodyText === null || $coverImage === null || $title === null || $publishedAt === null)) {
+        if (is_string($articleHtml) && ($bodyHtml === null || $bodyText === null || $coverImage === null || $title === null || $publishedAt === null)) {
             $parsed ??= $this->parseArticleDocument($source, $articleHtml, $item['url']);
             $bodyHtml ??= $parsed['body_html'] ?? null;
             $bodyText ??= $parsed['body_text'] ?? null;
@@ -404,12 +400,22 @@ class NewsScraperService
             return null;
         }
 
-        if ($bodyHtml === null && $bodyText !== null) {
+        if ($bodyHtml === null) {
             $bodyHtml = '<p>'.$bodyText.'</p>';
         }
 
         if ($this->shouldFilterByKeywords($source, $title, $bodyText ?? '')) {
             return null;
+        }
+
+        $meta = [];
+
+        if ($summary !== null) {
+            $meta['summary'] = $summary;
+        }
+
+        if ($detectedCategory !== null) {
+            $meta['category'] = $detectedCategory;
         }
 
         return [
@@ -419,10 +425,7 @@ class NewsScraperService
             'published_at' => $publishedAt,
             'source_url' => $item['url'],
             'cover_image_url' => $coverImage,
-            'meta' => array_filter([
-                'summary' => $summary,
-                'category' => $detectedCategory,
-            ], fn ($value) => $value !== null),
+            'meta' => $meta,
         ];
     }
 
@@ -621,9 +624,18 @@ class NewsScraperService
         }
 
         $asciiNormalized = preg_replace('/\bora\b/ui', '', $asciiNormalized ?? '');
-        $asciiNormalized = preg_replace('/\s+/u', ' ', $asciiNormalized ?? '');
 
-        return trim($asciiNormalized ?? $normalized);
+        if (! is_string($asciiNormalized)) {
+            $asciiNormalized = $normalized;
+        }
+
+        $asciiNormalized = preg_replace('/\s+/u', ' ', $asciiNormalized);
+
+        if (! is_string($asciiNormalized)) {
+            $asciiNormalized = $normalized;
+        }
+
+        return trim($asciiNormalized);
     }
 
     protected function extractPublishedAtFromDocument(DOMDocument $document): ?Carbon
@@ -639,7 +651,13 @@ class NewsScraperService
         ];
 
         foreach ($metaSelectors as $selector) {
-            $node = $xpath->query($selector)?->item(0);
+            $nodeList = $xpath->query($selector);
+
+            if ($nodeList === false) {
+                continue;
+            }
+
+            $node = $nodeList->item(0);
 
             if ($node !== null) {
                 $value = trim($node->nodeValue ?? '');
@@ -784,7 +802,11 @@ class NewsScraperService
         $node = $nodes->item(0);
 
         if (! $node instanceof DOMElement) {
-            return $mode === 'html' ? null : trim($node?->textContent ?? '');
+            if ($node === null) {
+                return null;
+            }
+
+            return $mode === 'html' ? null : trim($node->textContent ?? '');
         }
 
         if ($attribute !== null || $mode === 'attr') {

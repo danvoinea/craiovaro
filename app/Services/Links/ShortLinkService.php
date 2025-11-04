@@ -16,6 +16,7 @@ class ShortLinkService
         }
 
         return DB::transaction(function () use ($article): ShortLink {
+            /** @var ShortLink|null $existing */
             $existing = $article->shortLink()->lockForUpdate()->first();
 
             if ($existing !== null) {
@@ -24,10 +25,13 @@ class ShortLinkService
 
             $code = $this->generateUniqueCode();
 
-            return $article->shortLink()->create([
+            /** @var ShortLink $shortLink */
+            $shortLink = $article->shortLink()->create([
                 'code' => $code,
                 'target_url' => $article->source_url,
             ]);
+
+            return $shortLink;
         });
     }
 

@@ -7,9 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class StatusController extends Controller
 {
-    public function __construct(public GetSystemStatus $getSystemStatus)
-    {
-    }
+    public function __construct(public GetSystemStatus $getSystemStatus) {}
 
     public function show(): JsonResponse
     {
@@ -19,4 +17,3 @@ class StatusController extends Controller
         ]);
     }
 }
-

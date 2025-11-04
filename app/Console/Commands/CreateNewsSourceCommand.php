@@ -44,7 +44,8 @@ class CreateNewsSourceCommand extends Command
     protected function collectSourceData(): array
     {
         $name = $this->askRequired('Source name');
-        $baseUrl = $this->askRequired('Base URL');
+        $baseUrl = $this->askRequired('Base URL (feed or listing)');
+        $homepageUrl = $this->askOptional('Homepage URL (optional, defaults to domain)');
 
         $sourceType = $this->choice(
             'Source type',
@@ -78,6 +79,7 @@ class CreateNewsSourceCommand extends Command
         return Arr::whereNotNull([
             'name' => $name,
             'base_url' => $baseUrl,
+            'homepage_url' => $homepageUrl,
             'source_type' => $sourceType,
             'selector_type' => $selectorType ?: null,
             'link_selector' => $linkSelector,

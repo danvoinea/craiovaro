@@ -140,6 +140,7 @@ class ListNewsSourcesCommand extends Command
 
             $this->line(sprintf('  Base URL: %s', $source->base_url));
             $this->line(sprintf('  Selector type: %s', $source->selector_type ?? 'default (css)'));
+            $this->line(sprintf('  Homepage URL: %s', $source->homepage_url ?? $this->guessHomepageUrl($source->base_url)));
             $this->line(sprintf('  Scope: %s', $source->scope ?? 'local'));
             $this->line(sprintf('  Link selector: %s', $source->link_selector ?? '—'));
             $this->line(sprintf('  Title selector: %s', $source->title_selector ?? '—'));
@@ -178,5 +179,18 @@ class ListNewsSourcesCommand extends Command
                 }
             }
         }
+    }
+
+    protected function guessHomepageUrl(string $baseUrl): string
+    {
+        $parsed = parse_url($baseUrl);
+
+        if (! $parsed || ! isset($parsed['host'])) {
+            return $baseUrl;
+        }
+
+        $scheme = $parsed['scheme'] ?? 'https';
+
+        return $scheme.'://'.$parsed['host'].'/';
     }
 }

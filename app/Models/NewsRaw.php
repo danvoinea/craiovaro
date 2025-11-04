@@ -6,7 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string|null $title
+ * @property array<string, mixed>|null $meta
+ * @property Carbon|null $published_at
+ * @property Carbon|null $created_at
+ * @property-read NewsSource|null $source
+ * @property-read ShortLink|null $shortLink
+ */
 class NewsRaw extends Model
 {
     /** @use HasFactory<\Database\Factories\NewsRawFactory> */

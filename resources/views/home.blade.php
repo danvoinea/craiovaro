@@ -240,6 +240,30 @@
             text-decoration: underline;
         }
 
+        details.news-card.is-highlighted {
+            border-color: var(--brand-green);
+            background: rgba(76, 175, 80, 0.08);
+            box-shadow: 0 10px 24px rgba(76, 175, 80, 0.16);
+        }
+
+        details.news-card.is-highlighted[open] {
+            box-shadow: 0 16px 32px rgba(76, 175, 80, 0.2);
+        }
+
+        .curated-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--brand-green);
+            color: #fff;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
         .topics {
             display: flex;
             flex-direction: column;
@@ -281,6 +305,54 @@
 
         .topics-links a:hover {
             text-decoration: underline;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sidebar-section + .sidebar-section {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar-highlights {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar-highlight-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-highlight-item a {
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .sidebar-highlight-item a:hover {
+            text-decoration: underline;
+        }
+
+        .sidebar-highlight-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .sidebar-highlight-meta .news-category {
+            font-size: 11px;
         }
 
         .topics-list {
@@ -379,7 +451,7 @@
 
                 <div class="news-list">
                     @forelse ($currentNews as $item)
-                        <details class="news-card">
+                        <details class="news-card{{ $item['is_highlighted'] ? ' is-highlighted' : '' }}">
                             <summary>
                                 <span class="news-time">
                                     <span class="news-time-value">{{ $item['published_time'] ?? '—' }}</span>
@@ -390,7 +462,7 @@
                                 <span>
                                     <span class="news-title">
                                         @if ($item['short_url'])
-                                            <a href="{{ $item['short_url'] }}" target="_blank" rel="noopener">{{ $item['title'] }}</a>
+                                            <a href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>{{ $item['title'] }}</a>
                                         @else
                                             {{ $item['title'] }}
                                         @endif
@@ -399,6 +471,9 @@
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
                                         @if ($item['category'])
                                             <span class="news-category">{{ $item['category'] }}</span>
+                                        @endif
+                                        @if ($item['is_custom'])
+                                            <span class="curated-badge">Selectat</span>
                                         @endif
                                     </div>
                                 </span>
@@ -411,7 +486,9 @@
                             <div class="news-meta">
                                 <span>{{ $item['published_label'] }}</span>
                                 @if ($item['short_url'])
-                                    <a class="news-link" href="{{ $item['short_url'] }}" target="_blank" rel="noopener">Deschide articolul original</a>
+                                    <a class="news-link" href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>
+                                        {{ $item['is_external'] ? 'Deschide articolul original' : 'Vezi articolul complet' }}
+                                    </a>
                                 @endif
                             </div>
                         </details>
@@ -422,36 +499,63 @@
             </section>
 
             <aside class="panel topics">
-                <h2>Subiectele zilei</h2>
-                <ol class="topics-list">
-                    @forelse ($topics as $index => $topic)
-                        <li class="topic-item">
-                            <span class="topic-rank">{{ $index + 1 }}</span>
-                            <div class="topic-content">
-                                @if ($topic['short_url'])
-                                    <a href="{{ $topic['short_url'] }}" target="_blank" rel="noopener">{{ $topic['title'] }}</a>
-                                @else
-                                    {{ $topic['title'] }}
-                                @endif
-                                <div class="topic-meta">
-                                    <span>{{ $topic['source'] }}</span>
-                                    @if ($topic['category'])
-                                        <span class="news-category">{{ $topic['category'] }}</span>
+                @if ($sidebarHighlights->isNotEmpty())
+                    <div class="sidebar-section">
+                        <h2>Știri craiova.ro</h2>
+                        <ul class="sidebar-highlights">
+                            @foreach ($sidebarHighlights as $highlight)
+                                <li class="sidebar-highlight-item">
+                                    <a href="{{ $highlight['url'] }}">{{ $highlight['title'] }}</a>
+                                    <div class="sidebar-highlight-meta">
+                                        @if ($highlight['category'])
+                                            <span class="news-category">{{ $highlight['category'] }}</span>
+                                        @endif
+                                        @if ($highlight['published_time'])
+                                            <span>{{ $highlight['published_time'] }}</span>
+                                        @endif
+                                        @if ($highlight['published_label'])
+                                            <span>{{ $highlight['published_label'] }}</span>
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <div class="sidebar-section">
+                    <h2>Subiectele zilei</h2>
+                    <ol class="topics-list">
+                        @forelse ($topics as $index => $topic)
+                            <li class="topic-item">
+                                <span class="topic-rank">{{ $index + 1 }}</span>
+                                <div class="topic-content">
+                                    @if ($topic['short_url'])
+                                        <a href="{{ $topic['short_url'] }}" target="_blank" rel="noopener">{{ $topic['title'] }}</a>
+                                    @else
+                                        {{ $topic['title'] }}
                                     @endif
-                                    @if ($topic['published_time'])
-                                        <span>{{ $topic['published_time'] }}</span>
-                                    @endif
-                                    @if ($topic['similar_count'] > 0)
-                                        <span class="badge">{{ $topic['similar_count'] }} știri similare</span>
-                                    @endif
+                                    <div class="topic-meta">
+                                        <span>{{ $topic['source'] }}</span>
+                                        @if ($topic['category'])
+                                            <span class="news-category">{{ $topic['category'] }}</span>
+                                        @endif
+                                        @if ($topic['published_time'])
+                                            <span>{{ $topic['published_time'] }}</span>
+                                        @endif
+                                        @if ($topic['similar_count'] > 0)
+                                            <span class="badge">{{ $topic['similar_count'] }} știri similare</span>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
-                        </li>
-                    @empty
-                        <li>Încă nu am grupele de subiecte pentru astăzi.</li>
-                    @endforelse
-                </ol>
-                <div class="topics-links">
+                            </li>
+                        @empty
+                            <li>Încă nu am grupele de subiecte pentru astăzi.</li>
+                        @endforelse
+                    </ol>
+                </div>
+
+                <div class="sidebar-section topics-links">
                     <h3>Surse indexate</h3>
                     <ul>
                         @foreach ($sourcesList as $source)
