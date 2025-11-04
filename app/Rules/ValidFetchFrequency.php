@@ -12,7 +12,7 @@ class ValidFetchFrequency implements ValidationRule
     /**
      * @var array<int, string>
      */
-    protected array $presets = ['15m', 'hourly', 'daily'];
+    protected array $presets = ['5m', '15m', 'hourly', 'daily'];
 
     /**
      * Run the validation rule.
@@ -36,7 +36,7 @@ class ValidFetchFrequency implements ValidationRule
         try {
             CronExpression::factory($value);
         } catch (InvalidArgumentException) {
-            $fail('The :attribute field must be a valid cron expression or preset (15m, hourly, daily).');
+            $fail('The :attribute field must be a valid cron expression or preset (5m, 15m, hourly, daily).');
         }
     }
 }

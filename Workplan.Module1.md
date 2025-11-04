@@ -9,7 +9,7 @@ Fetch local news articles so craiova.ro can aggregate them, group them into topi
   * Source name
   * URL / RSS / sitemap
   * CSS or XPath selectors for title/body/date/image
-  * Fetch frequency (cron expression or preset: 15m / hourly / daily)
+  * Fetch frequency (cron expression or preset: 5m / 15m / hourly / daily)
   * Active / inactive flag
   * Start with the following websites as sources for news: https://gds.ro, https://cvlpress.ro, https://stiricraiova.ro, https://dj.politiaromana.ro/ro/stiri-si-media/stiri, https://jurnalulolteniei.ro/, https://www.editie.ro/, https://tvr-craiova.ro/, https://jurnaldecraiova.ro/, https://www.craiovaforum.ro
   * Keywords to search, separated by comma (this way, we can also add national news websites and filter by local issues)

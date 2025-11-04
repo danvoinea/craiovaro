@@ -104,6 +104,7 @@ class NewsSource extends Model
         $lastRun = $this->last_fetched_at;
 
         return match ($frequency) {
+            '5m' => $lastRun === null || $lastRun->diffInMinutes($now) >= 5,
             '15m' => $lastRun === null || $lastRun->diffInMinutes($now) >= 15,
             'hourly' => $lastRun === null || $lastRun->diffInMinutes($now) >= 60,
             'daily' => $lastRun === null || $lastRun->diffInHours($now) >= 24,
@@ -117,6 +118,7 @@ class NewsSource extends Model
         $reference = $this->last_fetched_at ?? Carbon::now();
 
         return match ($frequency) {
+            '5m' => $reference->copy()->addMinutes(5),
             '15m' => $reference->copy()->addMinutes(15),
             'hourly' => $reference->copy()->addHour(),
             'daily' => $reference->copy()->addDay(),

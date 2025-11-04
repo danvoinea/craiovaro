@@ -70,7 +70,7 @@ class CreateNewsSourceCommand extends Command
         $dateSelector = $this->askOptional('Date selector (optional)');
         $imageSelector = $this->askOptional('Image selector (optional)');
 
-        $frequency = $this->askRequired('Fetch frequency (cron, daily, hourly, 15m, etc.)');
+        $frequency = $this->askRequired('Fetch frequency (cron, 5m, 15m, hourly, daily, etc.)');
         $scope = $this->choice('Scope', ['local', 'national'], default: 'local');
         $keywordsRaw = $this->askOptional('Keywords (comma separated, optional)');
 

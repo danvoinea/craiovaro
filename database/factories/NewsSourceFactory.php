@@ -26,7 +26,7 @@ class NewsSourceFactory extends Factory
             'date_selector' => 'time',
             'image_selector' => 'img.featured',
             'link_selector' => 'a.article-link',
-            'fetch_frequency' => $this->faker->randomElement(['15m', 'hourly', 'daily']),
+            'fetch_frequency' => $this->faker->randomElement(['5m', '15m', 'hourly', 'daily']),
             'keywords' => 'craiova, dolj',
             'is_active' => true,
         ];
