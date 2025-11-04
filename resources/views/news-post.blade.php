@@ -124,42 +124,6 @@
             color: var(--brand-green);
         }
 
-        .related {
-            display: grid;
-            gap: 16px;
-        }
-
-        .related h2 {
-            margin: 0;
-            font-size: 20px;
-        }
-
-        .related-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 12px;
-        }
-
-        .related-list a {
-            text-decoration: none;
-            color: var(--text-dark);
-            font-weight: 600;
-        }
-
-        .related-list a:hover {
-            text-decoration: underline;
-        }
-
-        .related-meta {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
         .hero-logo {
             text-decoration: none;
             color: var(--text-dark);
@@ -176,6 +140,140 @@
             header.hero {
                 grid-column: 1 / -1;
             }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sidebar-section + .sidebar-section {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar-highlights,
+        .sidebar-latest {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar-highlight-item,
+        .sidebar-latest-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-highlight-item a,
+        .sidebar-latest-item a {
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .sidebar-highlight-item a:hover,
+        .sidebar-latest-item a:hover {
+            text-decoration: underline;
+        }
+
+        .sidebar-highlight-meta,
+        .sidebar-latest-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .sidebar-highlight-meta .news-category,
+        .sidebar-latest-meta .news-category {
+            font-size: 11px;
+        }
+
+        .topics-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .topic-item {
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+        }
+
+        .topic-rank {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(76, 175, 80, 0.12);
+            color: var(--brand-green);
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .topic-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .topic-content a {
+            font-weight: 600;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .topic-content a:hover {
+            text-decoration: underline;
+        }
+
+        .topic-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .topics-links {
+            gap: 12px;
+        }
+
+        .topics-links ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .topics-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .topics-links a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -211,20 +309,97 @@
             </div>
         </article>
 
-        <aside class="related">
-            <h2>Alte știri din {{ $categoryName }}</h2>
-            <ul class="related-list">
-                @forelse ($relatedPosts as $related)
-                    <li>
-                        <a href="{{ route('news-posts.show', ['category' => $related->category_slug, 'slug' => $related->slug]) }}">{{ $related->title }}</a>
-                        <div class="related-meta">
-                            <span>{{ $related->published_at?->timezone('Europe/Bucharest')->format('d.m H:i') }}</span>
-                        </div>
-                    </li>
-                @empty
-                    <li>Nu există alte știri similare momentan.</li>
-                @endforelse
-            </ul>
+        <aside class="sidebar">
+            @if ($sidebarHighlights->isNotEmpty())
+                <div class="sidebar-section">
+                    <h2>Știri craiova.ro</h2>
+                    <ul class="sidebar-highlights">
+                        @foreach ($sidebarHighlights as $highlight)
+                            <li class="sidebar-highlight-item">
+                                <a href="{{ $highlight['url'] }}">{{ $highlight['title'] }}</a>
+                                <div class="sidebar-highlight-meta">
+                                    @if ($highlight['category'])
+                                        <span class="news-category">{{ $highlight['category'] }}</span>
+                                    @endif
+                                    @if ($highlight['published_time'])
+                                        <span>{{ $highlight['published_time'] }}</span>
+                                    @endif
+                                    @if ($highlight['published_label'])
+                                        <span>{{ $highlight['published_label'] }}</span>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($latestNews->isNotEmpty())
+                <div class="sidebar-section">
+                    <h2>Ultimele 10 știri</h2>
+                    <ul class="sidebar-latest">
+                        @foreach ($latestNews as $item)
+                            <li class="sidebar-latest-item">
+                                <a href="{{ $item['short_url'] }}" target="_blank" rel="noopener">{{ $item['title'] }}</a>
+                                <div class="sidebar-latest-meta">
+                                    @if ($item['source'])
+                                        <span>{{ $item['source'] }}</span>
+                                    @endif
+                                    @if ($item['published_time'])
+                                        <span>{{ $item['published_time'] }}</span>
+                                    @endif
+                                    @if ($item['published_label'])
+                                        <span>{{ $item['published_label'] }}</span>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="sidebar-section">
+                <h2>Știrile zilei</h2>
+                <ol class="topics-list">
+                    @forelse ($topics as $index => $topic)
+                        <li class="topic-item">
+                            <span class="topic-rank">{{ $index + 1 }}</span>
+                            <div class="topic-content">
+                                @if ($topic['short_url'])
+                                    <a href="{{ $topic['short_url'] }}" target="_blank" rel="noopener">{{ $topic['title'] }}</a>
+                                @else
+                                    {{ $topic['title'] }}
+                                @endif
+                                <div class="topic-meta">
+                                    @if ($topic['source'])
+                                        <span>{{ $topic['source'] }}</span>
+                                    @endif
+                                    @if ($topic['category'])
+                                        <span class="news-category">{{ $topic['category'] }}</span>
+                                    @endif
+                                    @if ($topic['published_time'])
+                                        <span>{{ $topic['published_time'] }}</span>
+                                    @endif
+                                    @if ($topic['similar_count'] > 0)
+                                        <span class="badge">{{ $topic['similar_count'] }} știri similare</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </li>
+                    @empty
+                        <li>Încă nu am grupele de subiecte pentru astăzi.</li>
+                    @endforelse
+                </ol>
+            </div>
+
+            <div class="sidebar-section topics-links">
+                <h3>Surse indexate</h3>
+                <ul>
+                    @foreach ($sourcesList as $source)
+                        <li><a href="{{ $source['url'] }}" target="_blank" rel="noopener">{{ $source['name'] }}</a></li>
+                    @endforeach
+                </ul>
+            </div>
         </aside>
     </div>
 </body>

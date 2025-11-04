@@ -524,7 +524,7 @@
                 @endif
 
                 <div class="sidebar-section">
-                    <h2>Subiectele zilei</h2>
+                    <h2>Știrile zilei</h2>
                     <ol class="topics-list">
                         @forelse ($topics as $index => $topic)
                             <li class="topic-item">

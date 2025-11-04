@@ -27,6 +27,7 @@ class NewsPostPublicTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Știri craiova.ro', false)
+            ->assertDontSee('Ultimele 10 știri', false)
             ->assertSee($post->title, false)
             ->assertSee('Selectat', false)
             ->assertSee(route('news-posts.show', ['category' => $post->category_slug, 'slug' => $post->slug]), false);
@@ -51,6 +52,9 @@ class NewsPostPublicTest extends TestCase
         $response->assertOk()
             ->assertSee($post->title, false)
             ->assertSee('craiova.ro', false)
-            ->assertSee('Conținutul articolului despre Craiova.', false);
+            ->assertSee('Conținutul articolului despre Craiova.', false)
+            ->assertSee('Ultimele 10 știri', false)
+            ->assertSee('Știrile zilei', false)
+            ->assertSee('Surse indexate', false);
     }
 }
