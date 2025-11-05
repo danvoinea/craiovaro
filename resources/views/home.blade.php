@@ -188,6 +188,13 @@
             text-decoration: underline;
         }
 
+        .news-redirect-count {
+            margin-left: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
         .news-source {
             display: inline-flex;
             align-items: center;
@@ -466,6 +473,7 @@
                                         @else
                                             {{ $item['title'] }}
                                         @endif
+                                        <span class="news-redirect-count">({{ number_format($item['redirect_count']) }})</span>
                                     </span>
                                     <div class="news-source">
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
