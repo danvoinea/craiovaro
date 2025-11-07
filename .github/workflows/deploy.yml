@@ -13,6 +13,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
       # Set up SSH so we can connect as web52
       - name: Add SSH key
         run: |
@@ -62,4 +74,3 @@ jobs:
             chmod -R ug+rw storage bootstrap/cache
 
             echo "[deploy] done."
-

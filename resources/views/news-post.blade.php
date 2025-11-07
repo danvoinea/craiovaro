@@ -46,12 +46,6 @@
                 </div>
             </section>
 
-            @include('partials.sidebar', [
-                'sidebarHighlights' => $sidebarHighlights,
-                'topics' => $topics,
-                'sourcesList' => $sourcesList,
-                'sidebarClass' => 'article-sidebar',
-            ])
         </div>
     </div>
 @endsection

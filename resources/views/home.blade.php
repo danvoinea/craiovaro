@@ -63,11 +63,6 @@
                 </div>
             </section>
 
-            @include('partials.sidebar', [
-                'sidebarHighlights' => $sidebarHighlights,
-                'topics' => $topics,
-                'sourcesList' => $sourcesList,
-            ])
         </div>
     </div>
 @endsection
