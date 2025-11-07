@@ -127,4 +127,59 @@ HTML;
             'body_text_full' => 'Updated Craiova piece Fresh details.',
         ]);
     }
+
+    public function test_command_uses_dom_fallback_when_selectors_are_missing(): void
+    {
+        $source = NewsSource::factory()->create([
+            'source_type' => 'rss',
+            'title_selector' => null,
+            'body_selector' => null,
+            'image_selector' => null,
+            'date_selector' => null,
+            'keywords' => '',
+            'scope' => 'local',
+        ]);
+
+        $articleUrl = 'https://example.com/articles/fallback';
+
+        $article = NewsRaw::factory()
+            ->for($source, 'source')
+            ->create([
+                'source_url' => $articleUrl,
+                'url_hash' => hash('sha256', $articleUrl),
+                'body_html' => '<p>Short summary.</p>',
+                'body_text' => 'Short summary.',
+                'cover_image_url' => null,
+                'meta' => ['summary' => '<p>Short summary.</p>'],
+            ]);
+
+        $html = <<<'HTML'
+<!DOCTYPE html>
+<html>
+    <body>
+        <main>
+            <article>
+                <h1>Fallback body discovery</h1>
+                <p>Paragraph alpha.</p>
+                <p>Paragraph beta.</p>
+                <p>Paragraph gamma.</p>
+            </article>
+        </main>
+        <meta property="og:image" content="https://example.com/images/fallback.jpg" />
+    </body>
+</html>
+HTML;
+
+        Http::fake([$articleUrl => Http::response($html, 200)]);
+
+        $this->artisan('news:articles:fetch-fulltext', [
+            '--article' => [$article->id],
+        ])->assertExitCode(0);
+
+        $this->assertDatabaseHas('news_raw', [
+            'id' => $article->id,
+            'body_text_full' => 'Fallback body discovery Paragraph alpha. Paragraph beta. Paragraph gamma.',
+            'cover_image_url' => 'https://example.com/images/fallback.jpg',
+        ]);
+    }
 }

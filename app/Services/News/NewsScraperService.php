@@ -618,6 +618,22 @@ class NewsScraperService
             $publishedAt = $this->extractPublishedAtFromDocument($document);
         }
 
+        if ($title === null) {
+            $title = $this->extractFallbackTitle($document);
+        }
+
+        if ($bodyHtml === null) {
+            $bodyHtml = $this->extractFallbackArticleBody($document);
+        }
+
+        if ($bodyText === null && $bodyHtml !== null) {
+            $bodyText = $this->toPlainText($bodyHtml);
+        }
+
+        if ($coverImage === null) {
+            $coverImage = $this->extractFallbackCoverImage($document, $currentUrl);
+        }
+
         return [
             'title' => $title,
             'body_html' => $bodyHtml,
@@ -880,6 +896,144 @@ class NewsScraperService
         }
 
         return rtrim($baseUrl, '/').'/'.ltrim($url, '/');
+    }
+
+    protected function extractFallbackTitle(DOMDocument $document): ?string
+    {
+        $selectors = [
+            'article h1',
+            'main h1',
+            '.post-title',
+            '.entry-title',
+            'header h1',
+            'h1',
+        ];
+
+        foreach ($selectors as $selector) {
+            $nodes = $this->findNodes($document, $selector, 'css');
+
+            foreach ($nodes as $node) {
+                $text = trim($node->textContent ?? '');
+
+                if ($text !== '') {
+                    return $text;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function extractFallbackCoverImage(DOMDocument $document, string $currentUrl): ?string
+    {
+        $xpath = new DOMXPath($document);
+        $metaQueries = [
+            '//meta[@property="og:image"]/@content',
+            '//meta[@property="og:image:url"]/@content',
+            '//meta[@name="twitter:image"]/@content',
+        ];
+
+        foreach ($metaQueries as $query) {
+            $nodes = $xpath->query($query);
+
+            if ($nodes === false || $nodes->length === 0) {
+                continue;
+            }
+
+            $value = trim($nodes->item(0)?->nodeValue ?? '');
+
+            if ($value !== '') {
+                return $this->resolveUrl($value, $currentUrl);
+            }
+        }
+
+        $selectors = [
+            'article img',
+            '.entry-content img',
+            '.post-content img',
+        ];
+
+        foreach ($selectors as $selector) {
+            $nodes = $this->findNodes($document, $selector, 'css');
+
+            foreach ($nodes as $node) {
+                $src = trim($node->getAttribute('src'));
+
+                if ($src !== '') {
+                    return $this->resolveUrl($src, $currentUrl);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function extractFallbackArticleBody(DOMDocument $document): ?string
+    {
+        $selectors = [
+            'article',
+            'main article',
+            '#content article',
+            '.entry-content',
+            '.post-content',
+            '.article-content',
+            '.single-content',
+            '.story-content',
+            '.news-content',
+            '.post-body',
+            'div[itemprop="articleBody"]',
+        ];
+
+        foreach ($selectors as $selector) {
+            $nodes = $this->findNodes($document, $selector, 'css');
+
+            foreach ($nodes as $node) {
+                $html = $this->innerHtml($node);
+
+                if ($html === '') {
+                    continue;
+                }
+
+                $text = $this->toPlainText($html);
+                $paragraphCount = substr_count(strtolower($html), '<p');
+
+                if ($text !== '' && (mb_strlen($text) >= 400 || $paragraphCount >= 3)) {
+                    return $html;
+                }
+            }
+        }
+
+        $bestNode = null;
+        $bestScore = 0;
+        $paragraphs = $document->getElementsByTagName('p');
+
+        foreach ($paragraphs as $paragraph) {
+            $parent = $paragraph->parentNode;
+
+            if (! $parent instanceof DOMElement) {
+                continue;
+            }
+
+            $html = $this->innerHtml($parent);
+
+            if ($html === '') {
+                continue;
+            }
+
+            $text = $this->toPlainText($html);
+            $score = mb_strlen($text);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestNode = $parent;
+            }
+        }
+
+        if ($bestNode !== null && $bestScore >= 200) {
+            return $this->innerHtml($bestNode);
+        }
+
+        return null;
     }
 
     protected function shouldFilterByKeywords(NewsSource $source, string $title, string $bodyText): bool
