@@ -24,14 +24,13 @@
                                     @endif
                                 </span>
                                 <span>
-                                    <span class="news-title">
-                                        @if ($item['short_url'])
-                                            <a href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>{{ $item['title'] }}</a>
-                                        @else
-                                            {{ $item['title'] }}
-                                        @endif
-                                        <span class="news-redirect-count">({{ number_format($item['redirect_count']) }})</span>
-                                    </span>
+                                        <span class="news-title">
+                                            @if ($item['short_url'])
+                                                <a href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>{{ $item['title'] }}</a>
+                                            @else
+                                                {{ $item['title'] }}
+                                            @endif
+                                        </span>
                                     <div class="news-source">
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
                                         @if ($item['category'])
