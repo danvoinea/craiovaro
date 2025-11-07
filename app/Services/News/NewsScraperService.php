@@ -315,6 +315,10 @@ class NewsScraperService
                 $updates['body_text'] = $payload['body_text'];
             }
 
+            if ($existing->body_text_full === null && ($payload['body_text_full'] ?? null) !== null) {
+                $updates['body_text_full'] = $payload['body_text_full'];
+            }
+
             if ($existing->cover_image_url === null && $payload['cover_image_url'] !== null) {
                 $updates['cover_image_url'] = $payload['cover_image_url'];
             }
@@ -339,27 +343,163 @@ class NewsScraperService
     }
 
     /**
+     * @return array{status: string, message: string}
+     */
+    public function refreshArticleBody(NewsRaw $article, bool $force = false): array
+    {
+        $article->loadMissing('source');
+
+        $source = $article->source;
+
+        if ($source === null) {
+            return [
+                'status' => 'error',
+                'message' => sprintf('Article #%d is missing an associated source.', $article->id),
+            ];
+        }
+
+        $sourceUrl = trim((string) $article->source_url);
+
+        if ($sourceUrl === '') {
+            return [
+                'status' => 'error',
+                'message' => sprintf('Article #%d does not contain a source URL.', $article->id),
+            ];
+        }
+
+        if (! $force && $article->body_text_full !== null) {
+            return [
+                'status' => 'skipped',
+                'message' => 'Article already contains full text.',
+            ];
+        }
+
+        $item = [
+            'url' => $sourceUrl,
+            'title' => $article->title,
+            'summary' => data_get($article->meta, 'summary'),
+            'cover_image_url' => $article->cover_image_url,
+            'published_at' => $article->published_at,
+            'category' => data_get($article->meta, 'category'),
+        ];
+
+        if ($item['summary'] === null) {
+            $item['summary'] = $article->body_html ?? $article->body_text;
+        }
+
+        try {
+            $payload = $this->buildArticlePayload($source, $item, true, true);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [
+                'status' => 'error',
+                'message' => sprintf('Failed to fetch article #%d: %s', $article->id, $exception->getMessage()),
+            ];
+        }
+
+        if ($payload === null) {
+            return [
+                'status' => 'filtered',
+                'message' => 'Unable to extract article content with current selectors or filters.',
+            ];
+        }
+
+        $updates = [];
+
+        $incomingBodyHtml = $payload['body_html'] ?? null;
+
+        if ($incomingBodyHtml !== null && ($force || $article->body_html === null)) {
+            if ($article->body_html !== $incomingBodyHtml) {
+                $updates['body_html'] = $incomingBodyHtml;
+            }
+        }
+
+        $incomingBodyText = $payload['body_text'] ?? null;
+
+        if ($incomingBodyText !== null && ($force || $article->body_text === null)) {
+            if ($article->body_text !== $incomingBodyText) {
+                $updates['body_text'] = $incomingBodyText;
+            }
+        }
+
+        $incomingFullText = $payload['body_text_full'] ?? null;
+
+        if ($incomingFullText !== null && $incomingFullText !== $article->body_text_full) {
+            $updates['body_text_full'] = $incomingFullText;
+        }
+
+        $incomingTitle = $payload['title'] ?? null;
+
+        if ($incomingTitle !== null && ($force || $article->title === null)) {
+            if ($article->title !== $incomingTitle) {
+                $updates['title'] = $incomingTitle;
+            }
+        }
+
+        $incomingCover = $payload['cover_image_url'] ?? null;
+
+        if ($incomingCover !== null && ($force || $article->cover_image_url === null)) {
+            if ($article->cover_image_url !== $incomingCover) {
+                $updates['cover_image_url'] = $incomingCover;
+            }
+        }
+
+        if (($payload['published_at'] ?? null) instanceof Carbon) {
+            $currentPublished = $article->published_at;
+
+            if ($currentPublished === null || ($force && ! $currentPublished->equalTo($payload['published_at']))) {
+                $updates['published_at'] = $payload['published_at'];
+            }
+        }
+
+        if (($payload['meta'] ?? []) !== []) {
+            $mergedMeta = array_merge($article->meta ?? [], $payload['meta']);
+
+            if ($mergedMeta !== ($article->meta ?? [])) {
+                $updates['meta'] = $mergedMeta;
+            }
+        }
+
+        if ($updates === []) {
+            return [
+                'status' => 'skipped',
+                'message' => 'Article already up to date.',
+            ];
+        }
+
+        $article->forceFill($updates)->save();
+
+        return [
+            'status' => 'updated',
+            'message' => 'Article content refreshed successfully.',
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $item
      * @return array<string, mixed>|null
      */
-    protected function buildArticlePayload(NewsSource $source, array $item): ?array
+    protected function buildArticlePayload(NewsSource $source, array $item, bool $forceFetchPage = false, bool $skipKeywordFilter = false): ?array
     {
         $title = $item['title'] ?? null;
         $coverImage = $item['cover_image_url'] ?? null;
         $summary = $item['summary'] ?? null;
-        $category = $item['category'] ?? null;
         $publishedAt = $item['published_at'] instanceof Carbon ? $item['published_at'] : null;
 
-        $needsPageFetch = $this->shouldFetchPage($source, $summary);
+        $needsPageFetch = $forceFetchPage || $this->shouldFetchPage($source, $summary);
         $articleHtml = null;
         $parsed = null;
         $bodyHtml = null;
         $bodyText = null;
+        $bodyTextFull = null;
         $detectedCategory = $item['category'] ?? null;
+        $extractedFromPage = false;
 
         if ($needsPageFetch) {
             $articleHtml = $this->downloadContent($item['url']);
             $parsed = $this->parseArticleDocument($source, $articleHtml, $item['url']);
+            $extractedFromPage = ($parsed['body_html'] ?? null) !== null || ($parsed['body_text'] ?? null) !== null;
 
             $title = $parsed['title'] ?? $title;
             $coverImage = $parsed['cover_image_url'] ?? $coverImage;
@@ -382,6 +522,7 @@ class NewsScraperService
 
         if (is_string($articleHtml) && ($bodyHtml === null || $bodyText === null || $coverImage === null || $title === null || $publishedAt === null)) {
             $parsed ??= $this->parseArticleDocument($source, $articleHtml, $item['url']);
+            $extractedFromPage = $extractedFromPage || ($parsed['body_html'] ?? null) !== null || ($parsed['body_text'] ?? null) !== null;
             $bodyHtml ??= $parsed['body_html'] ?? null;
             $bodyText ??= $parsed['body_text'] ?? null;
             $coverImage ??= $parsed['cover_image_url'] ?? null;
@@ -391,6 +532,10 @@ class NewsScraperService
         }
 
         $title ??= 'Untitled article';
+
+        if ($bodyText === null && $bodyHtml !== null) {
+            $bodyText = $this->toPlainText($bodyHtml);
+        }
 
         if ($bodyHtml === null && $bodyText === null) {
             $bodyText = $summary !== null ? $this->toPlainText($summary) : null;
@@ -404,7 +549,11 @@ class NewsScraperService
             $bodyHtml = '<p>'.$bodyText.'</p>';
         }
 
-        if ($this->shouldFilterByKeywords($source, $title, $bodyText ?? '')) {
+        if ($extractedFromPage && $bodyText !== null) {
+            $bodyTextFull = $bodyText;
+        }
+
+        if (! $skipKeywordFilter && $this->shouldFilterByKeywords($source, $title, $bodyText ?? '')) {
             return null;
         }
 
@@ -422,6 +571,7 @@ class NewsScraperService
             'title' => $title,
             'body_html' => $bodyHtml,
             'body_text' => $bodyText ?? $this->toPlainText($bodyHtml),
+            'body_text_full' => $bodyTextFull,
             'published_at' => $publishedAt,
             'source_url' => $item['url'],
             'cover_image_url' => $coverImage,

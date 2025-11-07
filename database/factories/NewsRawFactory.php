@@ -24,6 +24,7 @@ class NewsRawFactory extends Factory
             'title' => $this->faker->sentence(),
             'body_html' => '<p>'.$this->faker->paragraph(3).'</p>',
             'body_text' => $this->faker->paragraph(3),
+            'body_text_full' => null,
             'published_at' => $this->faker->dateTimeBetween('-7 days'),
             'source_name' => $this->faker->company().' News',
             'source_url' => $articleUrl,

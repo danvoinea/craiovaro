@@ -11,6 +11,9 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string|null $title
+ * @property string|null $body_html
+ * @property string|null $body_text
+ * @property string|null $body_text_full
  * @property array<string, mixed>|null $meta
  * @property Carbon|null $published_at
  * @property Carbon|null $created_at
@@ -29,6 +32,7 @@ class NewsRaw extends Model
         'title',
         'body_html',
         'body_text',
+        'body_text_full',
         'published_at',
         'source_name',
         'source_url',
