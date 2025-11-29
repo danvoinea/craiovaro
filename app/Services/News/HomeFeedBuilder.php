@@ -250,9 +250,20 @@ class HomeFeedBuilder
 
             // Threshold for similarity (0.25 means 25% overlap in unique tokens)
             if ($bestGroupId !== null && $bestSimilarity >= 0.25) {
-                $groups[$bestGroupId]['articles'][] = $article;
-                // Update group tokens to include new tokens? 
-                // For stability, keeping the first article's tokens as the centroid is simpler and prevents drift.
+                // Check time constraint: only group if within 48 hours of the group's lead article
+                $groupLead = $groups[$bestGroupId]['articles'][0];
+                $leadTime = $groupLead->published_at ?? $groupLead->created_at;
+                $articleTime = $article->published_at ?? $article->created_at;
+
+                if ($leadTime && $articleTime && $leadTime->diffInHours($articleTime) <= 48) {
+                    $groups[$bestGroupId]['articles'][] = $article;
+                } else {
+                    // Similar title but too far apart in time -> new group
+                    $groups[] = [
+                        'tokens' => $tokens,
+                        'articles' => [$article],
+                    ];
+                }
             } else {
                 $groups[] = [
                     'tokens' => $tokens,
@@ -341,11 +352,43 @@ class HomeFeedBuilder
         }
 
         return collect(explode(' ', $normalized))
-            ->filter(fn(string $token): bool => $token !== '')
+            ->filter(fn(string $token): bool => mb_strlen($token) > 2)
             ->reject(fn(string $token): bool => in_array($token, $this->stopWords(), true))
+            ->map(fn(string $token) => $this->normalizeToken($token))
             ->unique()
             ->values()
             ->all();
+    }
+
+    protected function normalizeToken(string $token): string
+    {
+        // Basic Romanian stemming/normalization
+        // Order matters: longer suffixes first
+
+        $suffixes = [
+            'ului',
+            'ilor',
+            'ul',
+            'le',
+            'ea',
+            'ii',
+            'ei',
+            'a',
+            'i',
+            'u'
+        ];
+
+        foreach ($suffixes as $suffix) {
+            if (str_ends_with($token, $suffix)) {
+                $stem = substr($token, 0, -strlen($suffix));
+                // Avoid over-stemming short words (e.g. "ou" -> "o")
+                if (strlen($stem) >= 3) {
+                    return $stem;
+                }
+            }
+        }
+
+        return $token;
     }
 
     protected function calculateSimilarity(array $tokensA, array $tokensB): float
