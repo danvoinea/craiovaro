@@ -230,7 +230,8 @@ class HomeFeedBuilder
                 continue;
             }
 
-            $tokens = $this->getTokens($article->title);
+            $content = $article->title . ' ' . Str::limit($article->body_text ?? '', 500);
+            $tokens = $this->getTokens($content);
 
             if (empty($tokens)) {
                 continue;
