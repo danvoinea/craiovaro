@@ -22,12 +22,14 @@
                     <span class="category-pill">{{ $categoryName }}</span>
                     <h1 class="hero-title">{{ $post->title }}</h1>
                     <div class="hero-meta">
-                        <span>Publicat {{ $post->published_at?->timezone('Europe/Bucharest')->translatedFormat('d F Y, H:i') }}</span>
+                        <span>Publicat
+                            {{ $post->published_at?->timezone('Europe/Bucharest')->translatedFormat('d F Y, H:i') }}</span>
                         <span>Autor: craiova.ro</span>
                     </div>
                     <div class="hero-actions">
                         <a href="{{ route('home.show') }}">Înapoi la flux</a>
-                        <a href="https://twitter.com/intent/tweet?text={{ urlencode($post->title) }}&url={{ urlencode(url()->current()) }}" target="_blank" rel="noopener">Distribuie</a>
+                        <a href="https://twitter.com/intent/tweet?text={{ urlencode($post->title) }}&url={{ urlencode(url()->current()) }}"
+                            target="_blank" rel="noopener">Distribuie</a>
                     </div>
                 </header>
 
@@ -46,6 +48,7 @@
                 </div>
             </section>
 
+            @include('partials.sidebar')
         </div>
     </div>
 @endsection

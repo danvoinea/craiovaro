@@ -24,13 +24,14 @@
                                     @endif
                                 </span>
                                 <span>
-                                        <span class="news-title">
-                                            @if ($item['short_url'])
-                                                <a href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>{{ $item['title'] }}</a>
-                                            @else
-                                                {{ $item['title'] }}
-                                            @endif
-                                        </span>
+                                    <span class="news-title">
+                                        @if ($item['short_url'])
+                                            <a href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank"
+                                            rel="noopener" @endif>{{ $item['title'] }}</a>
+                                        @else
+                                            {{ $item['title'] }}
+                                        @endif
+                                    </span>
                                     <div class="news-source">
                                         <span>{{ $item['source'] ?? 'Sursă necunoscută' }}</span>
                                         @if ($item['category'])
@@ -50,7 +51,8 @@
                             <div class="news-meta">
                                 <span>{{ $item['published_label'] }}</span>
                                 @if ($item['short_url'])
-                                    <a class="news-link" href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank" rel="noopener" @endif>
+                                    <a class="news-link" href="{{ $item['short_url'] }}" @if ($item['is_external']) target="_blank"
+                                    rel="noopener" @endif>
                                         {{ $item['is_external'] ? 'Deschide articolul original' : 'Vezi articolul complet' }}
                                     </a>
                                 @endif
@@ -62,6 +64,7 @@
                 </div>
             </section>
 
+            @include('partials.sidebar')
         </div>
     </div>
 @endsection

@@ -14,7 +14,8 @@ class HomeFeedBuilder
 {
     public function __construct(
         protected ShortLinkService $shortLinks,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array{
@@ -70,7 +71,7 @@ class HomeFeedBuilder
                 : null;
             $publishedDate = null;
 
-            if ($localized !== null && ! $localized->isSameDay($today)) {
+            if ($localized !== null && !$localized->isSameDay($today)) {
                 $publishedDate = mb_strtolower($localized->locale('ro')->isoFormat('MMM D'));
             }
 
@@ -104,7 +105,7 @@ class HomeFeedBuilder
             $localized = $timestamp->copy()->setTimezone('Europe/Bucharest');
             $publishedDate = null;
 
-            if (! $localized->isSameDay($today)) {
+            if (!$localized->isSameDay($today)) {
                 $publishedDate = mb_strtolower($localized->locale('ro')->isoFormat('MMM D'));
             }
 
@@ -202,7 +203,7 @@ class HomeFeedBuilder
 
         $topics = $this->buildTopics($articles);
 
-        $sources = $sourcesList->map(fn (NewsSource $source): array => [
+        $sources = $sourcesList->map(fn(NewsSource $source): array => [
             'name' => $source->name,
             'url' => $source->homepage_url ?? $this->guessHomepageUrl($source->base_url),
         ]);
@@ -229,13 +230,35 @@ class HomeFeedBuilder
                 continue;
             }
 
-            $key = $this->topicKey($article->title);
+            $tokens = $this->getTokens($article->title);
 
-            if ($key === null) {
+            if (empty($tokens)) {
                 continue;
             }
 
-            $groups[$key]['articles'][] = $article;
+            $bestGroupId = null;
+            $bestSimilarity = 0.0;
+
+            foreach ($groups as $groupId => $group) {
+                $similarity = $this->calculateSimilarity($tokens, $group['tokens']);
+
+                if ($similarity > $bestSimilarity) {
+                    $bestSimilarity = $similarity;
+                    $bestGroupId = $groupId;
+                }
+            }
+
+            // Threshold for similarity (0.25 means 25% overlap in unique tokens)
+            if ($bestGroupId !== null && $bestSimilarity >= 0.25) {
+                $groups[$bestGroupId]['articles'][] = $article;
+                // Update group tokens to include new tokens? 
+                // For stability, keeping the first article's tokens as the centroid is simpler and prevents drift.
+            } else {
+                $groups[] = [
+                    'tokens' => $tokens,
+                    'articles' => [$article],
+                ];
+            }
         }
 
         $topics = collect($groups)
@@ -273,19 +296,19 @@ class HomeFeedBuilder
 
                     $sourceName = $lead->source_name ?? optional($lead->source)->name;
 
-                    if (! is_string($sourceName) || $sourceName === '') {
+                    if (!is_string($sourceName) || $sourceName === '') {
                         $sourceName = null;
                     }
 
                     $scope = optional($lead->source)->scope;
 
-                    if (! is_string($scope) || $scope === '') {
+                    if (!is_string($scope) || $scope === '') {
                         $scope = 'local';
                     }
 
                     $category = data_get($lead->meta, 'category');
 
-                    if (! is_string($category) || $category === '') {
+                    if (!is_string($category) || $category === '') {
                         $category = null;
                     }
 
@@ -300,33 +323,45 @@ class HomeFeedBuilder
                     ];
                 }
             )
-            ->filter(fn (array $topic): bool => $topic['title'] !== null)
-            ->sortByDesc(fn (array $topic): int => $topic['similar_count'])
+            ->filter(fn(array $topic): bool => $topic['title'] !== null)
+            ->sortByDesc(fn(array $topic): int => $topic['similar_count'])
             ->values()
             ->take(12);
 
         return $topics;
     }
 
-    protected function topicKey(string $title): ?string
+    protected function getTokens(string $title): array
     {
         $normalized = Str::ascii(Str::lower($title));
         $normalized = preg_replace('/[^a-z0-9\s]/u', ' ', $normalized);
 
-        if (! is_string($normalized)) {
-            return null;
+        if (!is_string($normalized)) {
+            return [];
         }
 
-        $tokens = collect(explode(' ', $normalized))
-            ->filter(fn (string $token): bool => $token !== '')
-            ->reject(fn (string $token): bool => in_array($token, $this->stopWords(), true))
-            ->values();
+        return collect(explode(' ', $normalized))
+            ->filter(fn(string $token): bool => $token !== '')
+            ->reject(fn(string $token): bool => in_array($token, $this->stopWords(), true))
+            ->unique()
+            ->values()
+            ->all();
+    }
 
-        if ($tokens->isEmpty()) {
-            return null;
+    protected function calculateSimilarity(array $tokensA, array $tokensB): float
+    {
+        if (empty($tokensA) || empty($tokensB)) {
+            return 0.0;
         }
 
-        return $tokens->take(6)->implode('-');
+        $intersection = count(array_intersect($tokensA, $tokensB));
+        $union = count(array_unique(array_merge($tokensA, $tokensB)));
+
+        if ($union === 0) {
+            return 0.0;
+        }
+
+        return $intersection / $union;
     }
 
     /**
@@ -335,9 +370,48 @@ class HomeFeedBuilder
     protected function stopWords(): array
     {
         return [
-            'a', 'ai', 'al', 'ale', 'care', 'ce', 'cu', 'de', 'din', 'dupa', 'este', 'fi', 'iar', 'in', 'la',
-            'lui', 'luna', 'mai', 'ne', 'noi', 'nu', 'o', 'pe', 'pentru', 'prin', 're', 'sa', 'si', 'sunt',
-            'un', 'una', 'unui', 'unor', 'va', 'va', 'vor', 'fost', 'cum', 'despre', 'intr', 'intre', 'cum',
+            'a',
+            'ai',
+            'al',
+            'ale',
+            'care',
+            'ce',
+            'cu',
+            'de',
+            'din',
+            'dupa',
+            'este',
+            'fi',
+            'iar',
+            'in',
+            'la',
+            'lui',
+            'luna',
+            'mai',
+            'ne',
+            'noi',
+            'nu',
+            'o',
+            'pe',
+            'pentru',
+            'prin',
+            're',
+            'sa',
+            'si',
+            'sunt',
+            'un',
+            'una',
+            'unui',
+            'unor',
+            'va',
+            'va',
+            'vor',
+            'fost',
+            'cum',
+            'despre',
+            'intr',
+            'intre',
+            'cum',
         ];
     }
 
@@ -345,12 +419,12 @@ class HomeFeedBuilder
     {
         $parsed = parse_url($baseUrl);
 
-        if (! $parsed || ! isset($parsed['host'])) {
+        if (!$parsed || !isset($parsed['host'])) {
             return $baseUrl;
         }
 
         $scheme = $parsed['scheme'] ?? 'https';
 
-        return $scheme.'://'.$parsed['host'].'/';
+        return $scheme . '://' . $parsed['host'] . '/';
     }
 }
